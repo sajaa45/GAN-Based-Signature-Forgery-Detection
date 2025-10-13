@@ -1,23 +1,38 @@
 import os
 import torch
 import torchvision.utils as vutils
-from train_gan import Generator
+from train_gan import Generator, LATENT_DIM, IMG_SIZE, DEVICE, SAVE_DIR
 
-def generate_fakes(output_dir="data/generated_samples", latent_dim=100, num_samples=500):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def generate_fakes(model_path=None, output_dir=None, num_samples=500):
+    """
+    Generate fake images using the trained GAN generator.
+    """
+    device = torch.device(DEVICE)
+    
+    if model_path is None:
+        model_path = os.path.join(SAVE_DIR, "generator_final.pth")
+    if output_dir is None:
+        output_dir = os.path.join(SAVE_DIR, "generated_fakes")
+
     os.makedirs(output_dir, exist_ok=True)
 
-    generator = Generator(latent_dim).to(device)
-    generator.load_state_dict(torch.load("../models/generator.pth", map_location=device))
+    # ✅ FIX: pass both latent_dim and img_size
+    generator = Generator(LATENT_DIM, IMG_SIZE).to(device)
+    generator.load_state_dict(torch.load(model_path, map_location=device))
     generator.eval()
 
+    print(f"✅ Loaded trained generator from {model_path}")
+
+    # Generate fake images
     with torch.no_grad():
         for i in range(num_samples):
-            z = torch.randn(1, latent_dim, device=device)
+            z = torch.randn(1, LATENT_DIM, device=device)
             fake = generator(z)
-            fake = (fake + 1) / 2  # Scale from [-1,1] to [0,1]
-            vutils.save_image(fake, f"{output_dir}/fake_{i+1:04d}.png")
-    print(f"Generated and saved {num_samples} fake signatures in {output_dir}")
+            fake = (fake + 1) / 2  # Convert from [-1,1] → [0,1]
+            vutils.save_image(fake, os.path.join(output_dir, f"fake_{i+1:04d}.png"))
+
+    print(f"🎨 Generated and saved {num_samples} fake images in: {output_dir}")
+
 
 if __name__ == "__main__":
-    generate_fakes()
+    generate_fakes(num_samples=500)

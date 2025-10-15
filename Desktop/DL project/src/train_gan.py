@@ -22,15 +22,16 @@ SAVE_DIR = "/content/generated_samp"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 class SignatureDataset(Dataset):
-    def __init__(self, root_dir):
+    def __init__(self, root_dir, img_size=64):
         self.root_dir = root_dir
         self.img_files = [os.path.join(root_dir, f)
                           for f in os.listdir(root_dir)
                           if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
-        # No resizing, just convert to tensor and normalize (images are already 128x128)
         self.transform = transforms.Compose([
-            transforms.ToTensor(),  # Converts to [C, H, W], values in [0,1]
-            transforms.Normalize([0.5], [0.5])  # Scale to [-1,1]
+            transforms.Grayscale(),
+            transforms.Resize((img_size, img_size)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.5], [0.5])
         ])
 
     def __len__(self):
@@ -38,7 +39,7 @@ class SignatureDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path = self.img_files[idx]
-        img = Image.open(img_path).convert("L")  # Ensure grayscale
+        img = Image.open(img_path).convert("L")
         img = self.transform(img)
         return img
 
@@ -56,6 +57,7 @@ class ResidualBlock(nn.Module):
 
     def forward(self, x):
         return x + self.block(x)
+
 
 class Generator(nn.Module):
     def __init__(self, latent_dim, img_size):
@@ -139,6 +141,7 @@ def compute_gradient_penalty(D, real_samples, fake_samples):
     gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
     return gradient_penalty
 
+
 def train():
     dataset = SignatureDataset(GENUINE_DIR, IMG_SIZE)
     dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
@@ -189,6 +192,7 @@ def train():
 
     torch.save(generator.state_dict(), os.path.join(SAVE_DIR, "generator_final.pth"))
     print("✅ Training complete — model saved!")
+
 
 def save_image_samples(generator, epoch, n_row=5):
     z = torch.randn(n_row ** 2, LATENT_DIM, device=DEVICE)

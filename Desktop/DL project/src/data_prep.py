@@ -29,9 +29,7 @@ def move_images(source_dir, dest_dir, split_ratio=0.2):
     for img in val_images:
         src_path = os.path.join(source_dir, img)
         dest_path = os.path.join(dest_dir, img)
-        if not os.path.exists(dest_path):
-            shutil.move(src_path, dest_path)
-
+        shutil.move(src_path, dest_path)
         print(f"Moved: {img}")
     
     print(f"Moved {len(val_images)} images from {source_dir} to {dest_dir}")
@@ -44,45 +42,19 @@ def count_images(directory):
     images = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
     return len(images)
 
-def image_preprocessing(image_path, target_size=128):
-    # Load as grayscale
-    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+#Resize → grayscale → normalize
+def image_preprocessing(image_path):
+    img=cv2.imread(image_path)
     if img is None:
-        print(f"❌ Error: Unable to load {image_path}")
+        print(f"Error: Unable to load image at {image_path}")
         return None
-
-    # Binarize using Otsu threshold (inverts image to white strokes on black)
-    _, bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-    # Find bounding box of signature
-    coords = cv2.findNonZero(bin_img)
-    if coords is None:
-        return None  # Empty image
-
-    x, y, w, h = cv2.boundingRect(coords)
-    cropped = bin_img[y:y+h, x:x+w]
-
-    # Add margin (optional, to avoid cropping too tightly)
-    margin = int(0.05 * max(h, w))
-    cropped = cv2.copyMakeBorder(cropped, margin, margin, margin, margin, cv2.BORDER_CONSTANT, value=0)
-
-    # Pad to square
-    h, w = cropped.shape
-    size = max(h, w)
-    top = (size - h) // 2
-    bottom = size - h - top
-    left = (size - w) // 2
-    right = size - w - left
-    padded = cv2.copyMakeBorder(cropped, top, bottom, left, right, cv2.BORDER_CONSTANT, value=0)
-
-    # Resize to target size
-    resized = cv2.resize(padded, (target_size, target_size), interpolation=cv2.INTER_AREA)
-
-    # Invert back to black on white
-    final = 255 - resized
-
-    # Normalize to [0,1]
-    return final / 255.0
+    # Resize
+    img=cv2.resize(img,(64,64))
+    #grayscale
+    img=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    #normalize
+    img=img/255.0
+    return img
 def preprocess_and_save_directory(source_dir, dest_dir):
     """Preprocess images and save them to a new directory"""
     os.makedirs(dest_dir, exist_ok=True)
@@ -97,8 +69,7 @@ def preprocess_and_save_directory(source_dir, dest_dir):
     
     for img_file in image_files:
         src_path = os.path.join(source_dir, img_file)
-        processed_img = image_preprocessing(src_path, target_size=128)
-
+        processed_img = image_preprocessing(src_path)
         
         if processed_img is not None:
             # Save the preprocessed image

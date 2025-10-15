@@ -21,6 +21,16 @@ def get_image_paths(folder):
     return [os.path.join(folder, f) for f in os.listdir(folder)
             if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
+def get_all_class_paths(root, class_name):
+    """
+    Recursively collect all image paths under subfolders named 'class_name' inside root.
+    """
+    paths = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        if os.path.basename(dirpath).lower() == class_name:
+            paths.extend([os.path.join(dirpath, f) for f in filenames if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
+    return paths
+
 class SignaturePairDataset(Dataset):
     def __init__(self, real_paths, fake_paths, img_size=128, augment=False):
         self.samples = [(p, 1) for p in real_paths] + [(p, 0) for p in fake_paths]
@@ -79,19 +89,21 @@ def train_classifier():
     base = os.path.join("data", "preprocessed")
     train_loader = make_loader(
         os.path.join(base, "train", "genuine"),
-        os.path.join(base, "train", "fake"),
+        os.path.join(base, "train", "forge"),
         BATCH_SIZE, shuffle=True, augment=True
     )
     val_loader = make_loader(
         os.path.join(base, "val", "genuine"),
-        os.path.join(base, "val", "fake"),
+        os.path.join(base, "val", "forge"),
         BATCH_SIZE, shuffle=False
     )
-    test_loader = make_loader(
-        os.path.join(base, "test", "genuine"),
-        os.path.join(base, "test", "fake"),
-        BATCH_SIZE, shuffle=False
-    )
+
+    # --- Updated test loader for nested structure ---
+    test_base = os.path.join(base, "test")
+    test_genuine_paths = get_all_class_paths(test_base, "genuine")
+    test_forge_paths = get_all_class_paths(test_base, "forge")
+    test_dataset = SignaturePairDataset(test_genuine_paths, test_forge_paths, img_size=IMG_SIZE, augment=False)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
 
     model = SmallSignatureCNN().to(DEVICE)
     criterion = nn.BCELoss()
@@ -157,7 +169,7 @@ def train_classifier():
     print("Confusion Matrix:")
     print(cm)
     print("Classification Report:")
-    print(classification_report(all_labels, all_preds, target_names=["Fake", "Genuine"]))
+    print(classification_report(all_labels, all_preds, target_names=["Forge", "Genuine"]))
 
 if __name__ == "__main__":
     train_classifier()

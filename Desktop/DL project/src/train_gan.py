@@ -18,7 +18,7 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Paths
 GENUINE_DIR = os.path.join("data", "preprocessed", "train", "genuine")
-SAVE_DIR = "/content/generated_samp"
+SAVE_DIR = "data"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 class SignatureDataset(Dataset):
@@ -142,7 +142,7 @@ def compute_gradient_penalty(D, real_samples, fake_samples):
     return gradient_penalty
 
 
-def train():
+def train(resume=True, extra_epochs=100):
     dataset = SignatureDataset(GENUINE_DIR, IMG_SIZE)
     dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
 
@@ -152,9 +152,23 @@ def train():
     optimizer_G = optim.Adam(generator.parameters(), lr=LR, betas=(BETA1, BETA2))
     optimizer_D = optim.Adam(discriminator.parameters(), lr=LR, betas=(BETA1, BETA2))
 
+    start_epoch = 0
+
+    # --- Resume logic ---
+    gen_ckpt_path = os.path.join(SAVE_DIR, "generator_final.pth")
+    disc_ckpt_path = os.path.join(SAVE_DIR, "discriminator_final.pth")
+    if resume and os.path.exists(gen_ckpt_path):
+        print(f"Resuming generator from {gen_ckpt_path}")
+        generator.load_state_dict(torch.load(gen_ckpt_path, map_location=DEVICE))
+        if os.path.exists(disc_ckpt_path):
+            print(f"Resuming discriminator from {disc_ckpt_path}")
+            discriminator.load_state_dict(torch.load(disc_ckpt_path, map_location=DEVICE))
+    else:
+        print("Training from scratch.")
+
     print(f"Training on {DEVICE} with {len(dataset)} images...")
 
-    for epoch in range(EPOCHS):
+    for epoch in range(extra_epochs):
         for i, real_imgs in enumerate(dataloader):
             real_imgs = real_imgs.to(DEVICE)
             bs = real_imgs.size(0)
@@ -184,14 +198,16 @@ def train():
                 g_loss.backward()
                 optimizer_G.step()
 
-        print(f"[Epoch {epoch+1}/{EPOCHS}] D loss: {d_loss.item():.4f} | G loss: {g_loss.item():.4f}")
+        print(f"[Epoch {epoch+1} (+resume)] D loss: {d_loss.item():.4f} | G loss: {g_loss.item():.4f}")
 
         # Save samples
         if (epoch + 1) % 25 == 0:
             save_image_samples(generator, epoch + 1)
 
-    torch.save(generator.state_dict(), os.path.join(SAVE_DIR, "generator_final.pth"))
-    print("✅ Training complete — model saved!")
+    # Save both generator and discriminator for future resuming
+    torch.save(generator.state_dict(), gen_ckpt_path)
+    torch.save(discriminator.state_dict(), disc_ckpt_path)
+    print("✅ Training complete — models saved!")
 
 
 def save_image_samples(generator, epoch, n_row=5):
@@ -202,4 +218,5 @@ def save_image_samples(generator, epoch, n_row=5):
 
 
 if __name__ == "__main__":
-    train()
+    # To continue training for 500 more epochs:
+    train(resume=True, extra_epochs=500)

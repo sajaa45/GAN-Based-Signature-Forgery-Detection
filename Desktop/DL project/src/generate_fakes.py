@@ -1,7 +1,7 @@
 import os
 import torch
 import torchvision.utils as vutils
-from train_gan import Generator, LATENT_DIM, IMG_SIZE, DEVICE, SAVE_DIR
+from train_gan import Generator, LATENT_DIM, IMG_SIZE, DEVICE
 
 def generate_fakes(model_path=None, output_dir=None, num_samples=500):
     """
@@ -10,9 +10,9 @@ def generate_fakes(model_path=None, output_dir=None, num_samples=500):
     device = torch.device(DEVICE)
     
     if model_path is None:
-        model_path = os.path.join(SAVE_DIR, "generator_final.pth")
+        model_path = os.path.join("data", "generator_final.pth")
     if output_dir is None:
-        output_dir = os.path.join(SAVE_DIR, "generated_fakes")
+        output_dir = os.path.join("data", "generated_fakes")
 
     os.makedirs(output_dir, exist_ok=True)
 

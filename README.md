@@ -1,4 +1,4 @@
-```markdown
+
 # Signature Forgery Detection Using GANs
 
 This project implements an end-to-end system for **signature forgery detection** by combining **Generative Adversarial Networks (GANs)** for synthetic signature generation and a **Convolutional Neural Network (CNN)** for classification.
@@ -78,8 +78,3 @@ In `app.py`, each step can be uncommented depending on which stage you want to e
 * **CNN Accuracy:** ~75% on the test dataset.
 * **GAN Evaluation:** ~55% of generated samples predicted as forged by the CNN, indicating the GAN produces partially realistic features.
 * **Training Observations:** Generator gradually improves during training, producing visually coherent signatures, though some instability occurs in later epochs.
-
-
-
-```
-
